@@ -28,6 +28,9 @@
     <img src="./media/teaser.jpg" alt="Logo" width="70%">
   </a>
 </p>
+<p align="center">
+NICE-SLAM produces accurate dense geometry and camera tracking on large-scale indoor scenes.
+</p>
 <br>
 
 
