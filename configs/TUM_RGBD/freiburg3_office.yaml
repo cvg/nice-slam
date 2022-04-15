@@ -1,0 +1,16 @@
+inherit_from: configs/TUM_RGBD/tum.yaml
+mapping:
+  bound: [[-5.,5.],[-5.,5.],[-5.,5.]]
+  marching_cubes_bound: [[-1.6,1.5],[-2.0,1.1],[1.4,4.45]]
+data:
+  input_folder: Datasets/TUM_RGBD/rgbd_dataset_freiburg3_long_office_household
+  output: output/TUM_RGBD/rgbd_dataset_freiburg3_long_office_household
+cam:  #intrinsic is different per scene in TUM, this cam does not have distortion
+  H: 480 
+  W: 640 
+  fx: 535.4
+  fy: 539.2
+  cx: 320.1
+  cy: 247.6
+  crop_edge: 8
+  crop_size: [384,512]

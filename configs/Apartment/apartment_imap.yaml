@@ -1,0 +1,40 @@
+dataset: 'azure'
+tracking:
+  vis_freq: 50
+  vis_inside_freq: 25
+  ignore_edge_W: 20
+  ignore_edge_H: 20
+  seperate_LR: False
+  const_speed_assumption: True
+  gt_camera: False
+  lr: 0.001
+  pixels: 5000
+  iters: 50
+mapping:
+  every_frame: 1
+  vis_freq: 50
+  vis_inside_freq: 30
+  mesh_freq: 50
+  ckpt_freq: 500
+  keyframe_every: 50
+  mapping_window_size: 10
+  pixels: 5000
+  iters_first: 1500
+  iters: 300
+  bound: [[-5.8,11.3],[-4.0,4.5],[-7.9,4.9]]
+  marching_cubes_bound: [[-5.8,11.3],[-4.0,4.5],[-7.9,4.9]]
+cam:
+  H: 720 
+  W: 1280
+  fx: 607.4694213867188
+  fy: 607.4534912109375
+  cx: 636.9967041015625
+  cy: 369.2689514160156
+  png_depth_scale: 1000.0 #for depth image in png format
+  crop_edge: 0
+data:
+  input_folder: Datasets/Apartment
+  output: output_imap/Apartment
+meshing:
+  depth_test: True
+  get_largest_components: True

@@ -1,0 +1,16 @@
+inherit_from: configs/Own/own.yaml
+cam:
+  H: 720 
+  W: 1280
+  fx: 607.4694213867188
+  fy: 607.4534912109375
+  cx: 636.9967041015625
+  cy: 369.2689514160156
+  png_depth_scale: 1000.0 #for depth image in png format
+  crop_edge: 0
+mapping:
+  bound: [[-5.8,11.3],[-4.0,4.5],[-7.9,4.9]]
+  marching_cubes_bound: [[-5.8,11.3],[-4.0,4.5],[-7.9,4.9]]
+data:
+  input_folder: Datasets/Own/scene0
+  output: output/Own/scene0

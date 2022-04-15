@@ -1,0 +1,117 @@
+coarse: False
+sync_method: strict
+scale: 0.1
+verbose: True
+occupancy: False
+low_gpu_mem: True
+grid_len:
+  coarse: 2 
+  middle: 0.32 
+  fine: 0.16
+  color: 0.16
+  bound_divisable: 0.32
+pretrained_decoders:
+  coarse: pretrained/coarse.pt
+  middle_fine: pretrained/middle_fine.pt # one ckpt contain both middle and fine
+meshing:
+  level_set: 10
+  resolution: 256 # change to 512 for higher resolution geometry
+  eval_rec: False
+  clean_mesh: True
+  depth_test: False
+  mesh_coarse_level: False
+  clean_mesh_bound_scale: 1.02
+  get_largest_components: False
+  color_mesh_extraction_method: render_ray_along_normal
+  remove_small_geometry_threshold: 0.2
+tracking:
+  ignore_edge_W: 20
+  ignore_edge_H: 20
+  use_color_in_tracking: True
+  device: "cuda:0"
+  handle_dynamic: False
+  vis_freq: 50
+  vis_inside_freq: 25
+  w_color_loss: 0.5
+  seperate_LR: False
+  const_speed_assumption: True
+  no_vis_on_first_frame: True
+  gt_camera: False
+  lr: 0.001
+  pixels: 5000
+  iters: 50
+mapping:
+  device: "cuda:0"
+  color_refine: True
+  middle_iter_ratio: 0.4
+  fine_iter_ratio: 0.6
+  every_frame: 5
+  BA: False
+  BA_cam_lr: 0.0002
+  fix_fine: True
+  fix_color: False
+  no_vis_on_first_frame: True
+  no_mesh_on_first_frame: True
+  no_log_on_first_frame: True
+  vis_freq: 50
+  vis_inside_freq: 25 #each iteration 
+  mesh_freq: 50
+  ckpt_freq: 500
+  keyframe_every: 50
+  mapping_window_size: 5
+  w_color_loss: 0.05
+  frustum_feature_selection: False
+  keyframe_selection_method: 'global'
+  save_selected_keyframes_info: False
+  lr_first_factor: 5
+  lr_factor: 1
+  pixels: 5000
+  iters_first: 1500
+  iters: 300
+  imap_decoders_lr: 0.0002
+  stage:
+    coarse:
+      decoders_lr: 0.0
+      coarse_lr: 0.001
+      middle_lr: 0.0
+      fine_lr: 0.0
+      color_lr: 0.0
+    middle:
+      decoders_lr: 0.0
+      coarse_lr: 0.0
+      middle_lr: 0.1
+      fine_lr: 0.0
+      color_lr: 0.0
+    fine:
+      decoders_lr: 0.0
+      coarse_lr: 0.0
+      middle_lr: 0.005
+      fine_lr: 0.005
+      color_lr: 0.0
+    color:
+      decoders_lr: 0.005
+      coarse_lr: 0.0
+      middle_lr: 0.005
+      fine_lr: 0.005
+      color_lr: 0.005
+cam:
+  H: 680
+  W: 1200
+  fx: 600.0
+  fy: 600.0
+  cx: 599.5
+  cy: 339.5
+  png_depth_scale: 6553.5 #for depth image in png format
+  crop_edge: 0
+rendering:
+  N_samples: 32
+  N_surface: 0
+  N_importance: 12
+  lindisp: False
+  perturb: 0.0
+data:
+  dim: 3
+model:
+  c_dim: 32
+  coarse_bound_enlarge: 2
+  pos_embedding_method: fourier

@@ -1,0 +1,31 @@
+dataset: 'scannet'
+tracking:
+  vis_freq: 50
+  vis_inside_freq: 25
+  ignore_edge_W: 20
+  ignore_edge_H: 20
+  seperate_LR: False
+  const_speed_assumption: True
+  lr: 0.002
+  pixels: 5000
+  iters: 50
+mapping:
+  every_frame: 5
+  vis_freq: 50
+  vis_inside_freq: 25
+  mesh_freq: 50
+  ckpt_freq: 500
+  keyframe_every: 50
+  mapping_window_size: 5
+  pixels: 5000
+  iters_first: 1500
+  iters: 300
+cam: 
+  H: 480 
+  W: 640
+  fx: 577.590698
+  fy: 578.729797
+  cx: 318.905426
+  cy: 242.683609
+  png_depth_scale: 1000. #for depth image in png format
+  crop_edge: 10

@@ -1,0 +1,31 @@
+dataset: 'cofusion'
+tracking:
+  vis_freq: 50
+  vis_inside_freq: 25
+  ignore_edge_W: 20
+  ignore_edge_H: 20
+  seperate_LR: True
+  const_speed_assumption: True
+  lr: 0.001
+  pixels: 200
+  iters: 10
+mapping:
+  every_frame: 5
+  vis_freq: 50
+  vis_inside_freq: 30
+  mesh_freq: 50
+  ckpt_freq: 500
+  keyframe_every: 50
+  mapping_window_size: 5
+  pixels: 1000
+  iters_first: 1500
+  iters: 60
+cam:
+  H: 480
+  W: 640
+  fx: 360.0
+  fy: 360.0
+  cx: 320.0
+  cy: 240.0
+  png_depth_scale: 1.0 #for depth image in png format
+  crop_edge: 0

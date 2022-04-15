@@ -1,0 +1,7 @@
+inherit_from: configs/Replica/replica_imap.yaml
+mapping:
+  bound: [[-2.9,8.9],[-3.2,5.5],[-3.5,3.3]]
+  marching_cubes_bound: [[-2.9,8.9],[-3.2,5.5],[-3.5,3.3]]
+data:
+  input_folder: Datasets/Replica/room0
+  output: output_imap/Replica/room0

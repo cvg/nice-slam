@@ -1,0 +1,18 @@
+inherit_from: configs/TUM_RGBD/tum_imap.yaml
+mapping:
+  bound: [[-4.7,4.3],[-5.9,1.5],[-2.5, 10.3]]
+  marching_cubes_bound: [[-5.0,13.4],[-5.0,13.7],[-5.0,5.0]]
+data:
+  input_folder: Datasets/TUM_RGBD/rgbd_dataset_freiburg2_xyz
+  output: output_imap/TUM_RGBD/rgbd_dataset_freiburg2_xyz
+cam:  #intrinsic is different per scene in TUM
+  H: 480 
+  W: 640 
+  fx: 520.9
+  fy: 521.0
+  cx: 325.1
+  cy: 249.7
+  crop_edge: 8
+  crop_size: [384,512]
+  distortion: [0.2312, -0.7849, -0.0033, -0.0001, 0.9172]
+

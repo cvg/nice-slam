@@ -1,0 +1,33 @@
+dataset: 'replica'
+meshing:
+  eval_rec: True
+tracking:
+  vis_freq: 50
+  vis_inside_freq: 25
+  ignore_edge_W: 100
+  ignore_edge_H: 100
+  seperate_LR: False
+  const_speed_assumption: True
+  lr: 0.0005
+  pixels: 5000
+  iters: 50
+mapping:
+  every_frame: 5
+  vis_freq: 50
+  vis_inside_freq: 30
+  mesh_freq: 50
+  ckpt_freq: 500
+  keyframe_every: 50
+  mapping_window_size: 5
+  pixels: 5000
+  iters_first: 1500
+  iters: 300
+cam:
+  H: 680
+  W: 1200
+  fx: 600.0
+  fy: 600.0
+  cx: 599.5
+  cy: 339.5
+  png_depth_scale: 6553.5 #for depth image in png format
+  crop_edge: 0

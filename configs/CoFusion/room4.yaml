@@ -1,0 +1,7 @@
+inherit_from: configs/CoFusion/cofusion.yaml
+mapping:
+  bound: [[-4.5, 3.5],[-1.5,2.0],[-3.0,2.5]]
+  marching_cubes_bound: [[-4.5, 3.5],[-1.5,2.0],[-3.0,2.5]]
+data:
+  input_folder: Datasets/CoFusion/room4
+  output: output/CoFusion/room4
