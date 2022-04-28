@@ -87,7 +87,6 @@ class Mesher(object):
             forecast_mask = torch.zeros((points.shape[0])).bool().to(device)
             if get_mask_use_all_frames:
                 for i in range(0, idx + 1, 1):
-                    print(i)
                     c2w = estimate_c2w_list[i].cpu().numpy()
                     w2c = np.linalg.inv(c2w)
                     w2c = torch.from_numpy(w2c).to(device).float()
@@ -420,7 +419,6 @@ class Mesher(object):
                     keyframe_dict, self.scale)
                 z = []
                 mask = []
-                print(points.shape)
                 for i, pnts in enumerate(torch.split(points, self.points_batch_size, dim=0)):
                     mask.append(mesh_bound.contains(pnts.cpu().numpy()))
                 mask = np.concatenate(mask, axis=0)

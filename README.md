@@ -105,7 +105,7 @@ python visualizer.py configs/Apartment/apartment.yaml --output output/vis/Apartm
 ### ScanNet
 ```bash
 bash scripts/download_vis_scene0000.sh
-python visualizer.py configs/ScanNet/scene0000.yaml --output output/vis/scannet/scene0000_00
+python visualizer.py configs/ScanNet/scene0000.yaml --output output/vis/scannet/scans/scene0000_00
 ```
 <p align="center">
   <img src="./media/scannet.gif" width="60%" />
