@@ -257,7 +257,7 @@ class Renderer(object):
     # this is only for imap*
     def regulation(self, c, decoders, rays_d, rays_o, gt_depth, device, stage='color'):
         """
-        Regulation that disencourage any geometry from the camera center to 0.85*depth.
+        Regulation that discourage any geometry from the camera center to 0.85*depth.
         For imap, the geometry will not be as good if this loss is not added.
 
         Args:

@@ -230,7 +230,7 @@ class Mapper(object):
     def optimize_map(self, num_joint_iters, lr_factor, idx, cur_gt_color, cur_gt_depth, gt_cur_c2w, keyframe_dict, keyframe_list, cur_c2w):
         """
         Mapping iterations. Sample pixels from selected keyframes,
-        then optimize scene representation and camera poses(if local BA enables).
+        then optimize scene representation and camera poses(if local BA enabled).
 
         Args:
             num_joint_iters (int): number of mapping iterations.
@@ -492,7 +492,7 @@ class Mapper(object):
                 weighted_color_loss = self.w_color_loss*color_loss
                 loss += weighted_color_loss
 
-            # for imap*, it use volume density
+            # for imap*, it uses volume density
             regulation = (not self.occupancy)
             if regulation:
                 point_sigma = self.renderer.regulation(

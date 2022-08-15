@@ -9,7 +9,7 @@ grid_len:
   middle: 0.32 
   fine: 0.16
   color: 0.16
-  bound_divisable: 0.32
+  bound_divisible: 0.32
 pretrained_decoders:
   coarse: pretrained/coarse.pt
   middle_fine: pretrained/middle_fine.pt # one ckpt contain both middle and fine

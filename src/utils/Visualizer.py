@@ -7,8 +7,8 @@ from src.common import get_camera_from_tensor
 
 class Visualizer(object):
     """
-    Visualize itermediate results, render out depth, color and depth uncertainty images.
-    It can be called per iteration, which is good for debuging (to see how each tracking/mapping iteration performs).
+    Visualize intermediate results, render out depth, color and depth uncertainty images.
+    It can be called per iteration, which is good for debugging (to see how each tracking/mapping iteration performs).
 
     """
 

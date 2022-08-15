@@ -157,6 +157,9 @@ class Mesher(object):
                         gt_depth = keyframe['depth'].to(
                             device).reshape(1, 1, H, W)
                         vgrid = uv.reshape(1, 1, -1, 2)
+                        # normalized to [-1, 1]
+                        vgrid[..., 0] = (vgrid[..., 0] / (W-1) * 2.0 - 1.0)
+                        vgrid[..., 1] = (vgrid[..., 1] / (H-1) * 2.0 - 1.0)
                         depth_sample = F.grid_sample(
                             gt_depth, vgrid, padding_mode='zeros', align_corners=True)
                         depth_sample = depth_sample.reshape(-1)

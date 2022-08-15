@@ -144,10 +144,10 @@ class NICE_SLAM():
         # scale the bound if there is a global scaling factor
         self.bound = torch.from_numpy(
             np.array(cfg['mapping']['bound'])*self.scale)
-        bound_divisable = cfg['grid_len']['bound_divisable']
-        # enlarge the bound a bit to allow it divisable by bound_divisable
+        bound_divisible = cfg['grid_len']['bound_divisible']
+        # enlarge the bound a bit to allow it divisible by bound_divisible
         self.bound[:, 1] = (((self.bound[:, 1]-self.bound[:, 0]) /
-                            bound_divisable).int()+1)*bound_divisable+self.bound[:, 0]
+                            bound_divisible).int()+1)*bound_divisible+self.bound[:, 0]
         if self.nice:
             self.shared_decoders.bound = self.bound
             self.shared_decoders.middle_decoder.bound = self.bound
@@ -209,6 +209,9 @@ class NICE_SLAM():
         c = {}
         c_dim = cfg['model']['c_dim']
         xyz_len = self.bound[:, 1]-self.bound[:, 0]
+
+        # If you have questions regarding the swap of axis 0 and 2,
+        # please refer to https://github.com/cvg/nice-slam/issues/24
 
         if self.coarse:
             coarse_key = 'grid_coarse'

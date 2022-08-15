@@ -4,7 +4,7 @@ grid_len:
   middle: 0.16
   fine: 0.08
   color: 0.08
-  bound_divisable: 0.32
+  bound_divisible: 0.32
 tracking:
   vis_freq: 50
   vis_inside_freq: 25
