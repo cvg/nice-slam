@@ -115,7 +115,7 @@ class Tracker(object):
             mask = batch_gt_depth > 0
         if self.args.dep_u:
             loss = (torch.abs(batch_gt_depth-depth) /
-                    torch.sqrt(uncertainty+1e-10 + torch,square(batch_gt_depth*0.0029)))[mask].sum()
+                    torch.sqrt(uncertainty+1e-10 + torch.square(batch_gt_depth*0.0029)))[mask].sum()
         else:
             loss = (torch.abs(batch_gt_depth-depth) /
                     torch.sqrt(uncertainty+1e-10))[mask].sum()
