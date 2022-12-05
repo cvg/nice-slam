@@ -1,4 +1,5 @@
 dataset: 'replica'
+verbose: False
 meshing:
   eval_rec: True
 tracking:

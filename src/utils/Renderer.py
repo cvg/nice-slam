@@ -106,7 +106,12 @@ class Renderer(object):
 
         if gt_depth is not None:
             # in case the bound is too large
-            far = torch.clamp(far_bb, 0,  torch.max(gt_depth*1.2))
+            try:
+                max_dep = torch.max(gt_depth*1.2)
+            except RuntimeError:
+                print(gt_depth)
+                print(torch.max(gt_depth*1.2))
+            far = torch.clamp(far_bb, 0,  )
         else:
             far = far_bb
         if N_surface > 0:

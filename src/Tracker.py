@@ -113,9 +113,12 @@ class Tracker(object):
             mask = (tmp < 10*tmp.median()) & (batch_gt_depth > 0)
         else:
             mask = batch_gt_depth > 0
-
-        loss = (torch.abs(batch_gt_depth-depth) /
-                torch.sqrt(uncertainty+1e-10))[mask].sum()
+        if self.args.dep_u:
+            loss = (torch.abs(batch_gt_depth-depth) /
+                    torch.sqrt(uncertainty+1e-10 + torch,square(batch_gt_depth*0.0029)))[mask].sum()
+        else:
+            loss = (torch.abs(batch_gt_depth-depth) /
+                    torch.sqrt(uncertainty+1e-10))[mask].sum()
 
         if self.use_color_in_tracking:
             color_loss = torch.abs(
@@ -191,8 +194,11 @@ class Tracker(object):
                 gt_camera_tensor = get_tensor_from_camera(gt_c2w)
                 if self.const_speed_assumption and idx-2 >= 0:
                     pre_c2w = pre_c2w.float()
-                    delta = pre_c2w@self.estimate_c2w_list[idx-2].to(
-                        device).float().inverse()
+                    #delta = pre_c2w@self.estimate_c2w_list[idx-2].to(
+                    #    device).float().inverse()
+                    # Need to change this line for obelisk runtime, not sure why
+                    delta = pre_c2w@self.estimate_c2w_list[idx-2].float().inverse().to(
+                        device)
                     estimated_new_cam_c2w = delta@pre_c2w
                 else:
                     estimated_new_cam_c2w = pre_c2w

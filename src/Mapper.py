@@ -485,8 +485,12 @@ class Mapper(object):
             depth, uncertainty, color = ret
 
             depth_mask = (batch_gt_depth > 0)
-            loss = torch.abs(
-                batch_gt_depth[depth_mask]-depth[depth_mask]).sum()
+
+            if self.args.dep_u:
+                loss = torch.div(torch.abs(batch_gt_depth[depth_mask]-depth[depth_mask]), batch_gt_depth[depth_mask]*(0.0029)).sum()
+            else:
+                loss = torch.abs(batch_gt_depth[depth_mask]-depth[depth_mask]).sum()
+
             if ((not self.nice) or (self.stage == 'color')):
                 color_loss = torch.abs(batch_gt_color - color).sum()
                 weighted_color_loss = self.w_color_loss*color_loss
