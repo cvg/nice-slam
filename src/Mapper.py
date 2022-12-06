@@ -545,7 +545,7 @@ class Mapper(object):
 
     def run(self):
         cfg = self.cfg
-        idx, gt_color, gt_depth, gt_c2w = self.frame_reader[0]
+        idx, gt_color, gt_depth, gt_c2w, imu = self.frame_reader[0]
 
         self.estimate_c2w_list[0] = gt_c2w.cpu()
         init = True
@@ -573,7 +573,7 @@ class Mapper(object):
                 print(prefix+"Mapping Frame ", idx.item())
                 print(Style.RESET_ALL)
 
-            _, gt_color, gt_depth, gt_c2w = self.frame_reader[idx]
+            _, gt_color, gt_depth, gt_c2w, imu = self.frame_reader[idx]
 
             if not init:
                 lr_factor = cfg['mapping']['lr_factor']

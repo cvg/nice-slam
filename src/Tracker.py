@@ -152,7 +152,7 @@ class Tracker(object):
         else:
             pbar = tqdm(self.frame_loader)
 
-        for idx, gt_color, gt_depth, gt_c2w in pbar:
+        for idx, gt_color, gt_depth, gt_c2w, imu in pbar:
             if not self.verbose:
                 pbar.set_description(f"Tracking Frame {idx[0]}")
 
@@ -257,6 +257,7 @@ class Tracker(object):
                     candidate_cam_tensor.clone().detach())
                 c2w = torch.cat([c2w, bottom], dim=0)
             self.estimate_c2w_list[idx] = c2w.clone().cpu()
+
             self.gt_c2w_list[idx] = gt_c2w.clone().cpu()
             pre_c2w = c2w.clone()
             self.idx[0] = idx

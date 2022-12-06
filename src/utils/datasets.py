@@ -71,6 +71,22 @@ class BaseDataset(Dataset):
 
         self.crop_edge = cfg['cam']['crop_edge']
 
+        # Only try to load imu data if imu usage desired
+        if hasattr(args, 'imu'):
+            if args.imu:
+                self.imu_data = self.get_imu_data()
+            else:
+                self.imu_data = []
+
+    def get_imu_data(self):
+        imu_data_path = os.path.join(self.input_folder, 'imu')
+        # If IMU file exists, load in data, otherwise return nothing
+        if os.path.exists(imu_data_path):
+            imu_data = torch.load(imu_data_path + '/imu_data')
+            return imu_data
+        else:
+            return []
+
     def __len__(self):
         return self.n_img
 
@@ -110,7 +126,17 @@ class BaseDataset(Dataset):
             depth_data = depth_data[edge:-edge, edge:-edge]
         pose = self.poses[index]
         pose[:3, 3] *= self.scale
-        return index, color_data.to(self.device), depth_data.to(self.device), pose.to(self.device)
+
+        # If IMU data available, load it in
+        if self.imu_data is not None and index < len(self.imu_data['gyro']):
+            gyro_idx = self.imu_data['gyro'][index,:]
+            accel_idx = self.imu_data['gyro'][index,:]
+            dt_idx = self.imu_data['dt'][index]
+            # Save dict for single index
+            imu = {'gyro': gyro_idx, 'accel': accel_idx, 'dt': dt_idx}
+        else:
+            imu = []
+        return index, color_data.to(self.device), depth_data.to(self.device), pose.to(self.device), imu
 
 
 class Replica(BaseDataset):
@@ -194,6 +220,7 @@ class ScanNet(BaseDataset):
         self.poses = []
         pose_paths = sorted(glob.glob(os.path.join(path, '*.txt')),
                             key=lambda x: int(os.path.basename(x)[:-4]))
+        
         for pose_path in pose_paths:
             with open(pose_path, "r") as f:
                 lines = f.readlines()

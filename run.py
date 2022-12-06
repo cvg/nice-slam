@@ -32,6 +32,7 @@ def main():
     nice_parser.add_argument('--imap', dest='nice', action='store_false')
     parser.set_defaults(nice=True)
     parser.add_argument('--dep_u', action='store_true')
+    parser.add_argument('--imu', action='store_true')
     args = parser.parse_args()
 
     cfg = config.load_config(
