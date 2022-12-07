@@ -128,14 +128,23 @@ class BaseDataset(Dataset):
         pose[:3, 3] *= self.scale
 
         # If IMU data available, load it in
-        if self.imu_data is not None and index < len(self.imu_data['gyro']):
-            gyro_idx = self.imu_data['gyro'][index,:]
-            accel_idx = self.imu_data['gyro'][index,:]
-            dt_idx = self.imu_data['dt'][index]
-            # Save dict for single index
-            imu = {'gyro': gyro_idx, 'accel': accel_idx, 'dt': dt_idx}
-        else:
-            imu = []
+        imu = []
+        if self.imu_data:
+            # Want the data for current frame to be about change from last to curr frame
+            # Thus, load in index-1
+            if index > 0:
+                gyro_idx = self.imu_data['gyro'][index-1,:]
+                vel_idx = self.imu_data['vel'][index-1,:]
+                dt_idx = self.imu_data['dt'][index-1]
+
+                # Add fudge factor if std is zero
+                vel_std = max(0.0001, self.imu_data['vel_std'])
+                gyro_std = max(0.0001, self.imu_data['gyro_std'])
+
+                # Save dict for single index
+                imu = {'vel': vel_idx, 'gyro': gyro_idx, 'dt': dt_idx, 'vel_std': vel_std, 'gyro_std': gyro_std}
+            else:
+                imu = {}
         return index, color_data.to(self.device), depth_data.to(self.device), pose.to(self.device), imu
 
 

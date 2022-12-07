@@ -13,7 +13,7 @@ from src.common import (get_camera_from_tensor, get_samples,
                         get_tensor_from_camera)
 from src.utils.datasets import get_dataset
 from src.utils.Visualizer import Visualizer
-
+from liegroups.torch import SO3
 
 class Tracker(object):
     def __init__(self, cfg, args, slam
@@ -68,7 +68,7 @@ class Tracker(object):
                                      renderer=self.renderer, verbose=self.verbose, device=self.device)
         self.H, self.W, self.fx, self.fy, self.cx, self.cy = slam.H, slam.W, slam.fx, slam.fy, slam.cx, slam.cy
 
-    def optimize_cam_in_batch(self, camera_tensor, gt_color, gt_depth, batch_size, optimizer):
+    def optimize_cam_in_batch(self, camera_tensor, gt_color, gt_depth, batch_size, optimizer, imu, idx):
         """
         Do one iteration of camera iteration. Sample pixels, render depth/color, calculate loss and backpropagation.
 
@@ -78,7 +78,8 @@ class Tracker(object):
             gt_depth (tensor): ground truth depth image of the current frame.
             batch_size (int): batch size, number of sampling rays.
             optimizer (torch.optim): camera optimizer.
-
+            imu (dict): linear/angular velocity, dt, corresponding uncertainties associated with transition from previous to current frame
+            idx (int): index of current frame
         Returns:
             loss (float): The value of loss.
         """
@@ -124,6 +125,43 @@ class Tracker(object):
             color_loss = torch.abs(
                 batch_gt_color - color)[mask].sum()
             loss += self.w_color_loss*color_loss
+
+        # If using IMU, add in loss associated with current frame pose relative to prev frame pose
+        # through IMU/velocity measurements
+        if self.args.imu:
+            # Load this in as a constant value
+            # In reality, this has its own uncertainty... but let's ignore that
+            c2w_prev = self.gt_c2w_list[idx-1]
+            C_0 = SO3.from_matrix(c2w_prev[0:3, 0:3], normalize=True)
+            r_0 = c2w_prev[0:3, 3:4]
+
+            C_1 = SO3.from_matrix(c2w[0:3, 0:3].cpu(), normalize=True)
+            r_1 = c2w[0:3, 3:4].cpu()
+            
+            # Compute the SO(3) difference between measured and predicted change
+            gyr_tmp = (imu['gyro'] * imu['dt']).float()
+            Err_C = SO3.exp( gyr_tmp ).dot( ( C_0.inv().dot(C_1) ).inv() )
+            err_C = Err_C.log()
+
+            # Compute Jacobian of error w.r.t. noise L
+            #L = - torch.mm(SO3.inv_left_jacobian(err_C).double(), SO3.left_jacobian(gyr_tmp).double()) * imu['dt']
+            L = - (torch.eye(3) * imu['dt']).float()
+            # Form full noise covariance on gyro measurements
+            Q_gyro = (imu['gyro_std']**2 * torch.eye(3)).float()
+            # Compute weight on err_C
+            W = torch.inverse(L @ Q_gyro @ torch.t(L)).double()
+
+            # Form position error by comparing velocity measurement to predicted vel meas
+            err_r = (imu['vel'] - C_0.inv().dot((r_1 - r_0).squeeze() / imu['dt']).squeeze()).squeeze()
+
+            # Overall IMU loss is sum between position and orientation loss, weighted by the
+            # uncertainty on each measurement
+            loss_C = (err_r.unsqueeze(0) @ W @ err_r.unsqueeze(1))[0]
+            loss_r = torch.dot(err_r, err_r) / imu['vel_std']**2
+
+            # Add up overall imu loss (my dimension handling is garbage, hence [0])
+            imu_loss = loss_C[0] + loss_r[0]
+            loss += imu_loss
 
         loss.backward()
         optimizer.step()
@@ -181,7 +219,7 @@ class Tracker(object):
 
             if self.verbose:
                 print(Fore.MAGENTA)
-                print("Tracking Frame ",  idx.item())
+                print("Tracking Frame ", idx.item())
                 print(Style.RESET_ALL)
 
             if idx == 0 or self.gt_camera:
@@ -227,7 +265,7 @@ class Tracker(object):
                 initial_loss_camera_tensor = torch.abs(
                     gt_camera_tensor.to(device)-camera_tensor).mean().item()
                 candidate_cam_tensor = None
-                current_min_loss = 10000000000.
+                current_min_loss = 10000000000.0
                 for cam_iter in range(self.num_cam_iters):
                     if self.seperate_LR:
                         camera_tensor = torch.cat([quad, T], 0).to(self.device)
@@ -236,7 +274,7 @@ class Tracker(object):
                         idx, cam_iter, gt_depth, gt_color, camera_tensor, self.c, self.decoders)
 
                     loss = self.optimize_cam_in_batch(
-                        camera_tensor, gt_color, gt_depth, self.tracking_pixels, optimizer_camera)
+                        camera_tensor, gt_color, gt_depth, self.tracking_pixels, optimizer_camera, imu, idx)
 
                     if cam_iter == 0:
                         initial_loss = loss
@@ -257,8 +295,10 @@ class Tracker(object):
                     candidate_cam_tensor.clone().detach())
                 c2w = torch.cat([c2w, bottom], dim=0)
             self.estimate_c2w_list[idx] = c2w.clone().cpu()
+            print("Tracker saving c2w estimate ", idx.item())
 
             self.gt_c2w_list[idx] = gt_c2w.clone().cpu()
+
             pre_c2w = c2w.clone()
             self.idx[0] = idx
             if self.low_gpu_mem:

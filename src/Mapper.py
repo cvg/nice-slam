@@ -548,6 +548,7 @@ class Mapper(object):
         idx, gt_color, gt_depth, gt_c2w, imu = self.frame_reader[0]
 
         self.estimate_c2w_list[0] = gt_c2w.cpu()
+        print("Mapper saving c2w estimate 0")
         init = True
         prev_idx = -1
         while (1):
@@ -611,6 +612,7 @@ class Mapper(object):
                 if self.BA:
                     cur_c2w = _
                     self.estimate_c2w_list[idx] = cur_c2w
+                    print("Mapper saving c2w estimate ", idx.item())
 
                 # add new frame to keyframe set
                 if outer_joint_iter == outer_joint_iters-1:
