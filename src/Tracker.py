@@ -40,6 +40,10 @@ class Tracker(object):
         self.mapping_cnt = slam.mapping_cnt
         self.shared_decoders = slam.shared_decoders
         self.estimate_c2w_list = slam.estimate_c2w_list
+        self.RMI_list = slam.RMI_list
+        self.RMI_cov_list = slam.RMI_cov_list
+        self.tmp_RMI = slam.tmp_RMI
+        self.tmp_RMI_cov = slam.tmp_RMI_cov
 
         self.cam_lr = cfg['tracking']['lr']
         self.device = cfg['tracking']['device']
@@ -56,6 +60,7 @@ class Tracker(object):
 
         self.every_frame = cfg['mapping']['every_frame']
         self.no_vis_on_first_frame = cfg['mapping']['no_vis_on_first_frame']
+        self.keyframe_every = cfg['mapping']['keyframe_every']
 
         self.prev_mapping_idx = -1
         self.frame_reader = get_dataset(
@@ -144,8 +149,8 @@ class Tracker(object):
             err_C = Err_C.log()
 
             # Compute Jacobian of error w.r.t. noise L
-            #L = - torch.mm(SO3.inv_left_jacobian(err_C).double(), SO3.left_jacobian(gyr_tmp).double()) * imu['dt']
-            L = - (torch.eye(3) * imu['dt']).float()
+            L = - (torch.mm(SO3.inv_left_jacobian(err_C.detach()).double(), SO3.left_jacobian(gyr_tmp).double()) * imu['dt']).float()
+            #L = - (torch.eye(3) * imu['dt']).float()
             # Form full noise covariance on gyro measurements
             Q_gyro = (imu['gyro_std']**2 * torch.eye(3)).float()
             # Compute weight on err_C
@@ -161,7 +166,8 @@ class Tracker(object):
 
             # Add up overall imu loss (my dimension handling is garbage, hence [0])
             imu_loss = loss_C[0] + loss_r[0]
-            loss += imu_loss
+            w_imu_loss = 0.01
+            loss += w_imu_loss * imu_loss
 
         loss.backward()
         optimizer.step()
@@ -181,6 +187,52 @@ class Tracker(object):
                 val = val.clone().to(self.device)
                 self.c[key] = val
             self.prev_mapping_idx = self.mapping_idx[0].clone()
+
+    def update_RMI(self, RMI_idx, imu, reset):
+        if reset:
+            self.RMI_list[RMI_idx] = torch.eye(4)
+            self.RMI_cov_list[RMI_idx] = torch.zeros(6,6)
+            self.tmp_RMI = []
+            self.tmp_RMI_cov = []
+        else:
+            # Load in old RMI components
+            Del_C_prev = SO3.from_matrix(self.RMI_list[RMI_idx][0:3, 0:3], normalize=True)
+            Del_r_prev = self.RMI_list[RMI_idx][0:3, 3:4]
+
+            # Precompute u * dt
+            gyr_t = (imu['gyro'] * imu['dt']).float()
+            vel_t = (imu['vel'] * imu['dt']).float()
+
+            # Compute new RMI components
+            Del_C_new = torch.mm(Del_C_prev.mat, SO3.exp(gyr_t).mat)
+            Del_r_new = Del_r_prev + torch.mm(Del_C_prev.mat, torch.t(imu['vel'] * imu['dt']).float())
+            # Save full RMI representation
+            self.RMI_list[RMI_idx][0:3, 0:3] = Del_C_new
+            self.RMI_list[RMI_idx][0:3, 3:4] = Del_r_new
+
+            # Compute uncertainty propagation
+            # Compute RMI Jacobian
+            F_1 = torch.cat( (torch.eye(3), torch.zeros(3,3)), 1)
+            
+            F_2 = torch.cat( ( -SO3.wedge(torch.mm(Del_C_prev.mat, vel_t.reshape(3,1)).squeeze()), torch.eye(3)), 1)
+            F_prev = torch.cat( (F_1, F_2), 0).float()
+
+            # Compute noise Jacobian
+            L_11 = (torch.mm(Del_C_prev.mat, SO3.left_jacobian(gyr_t)) * imu['dt'])
+            L_22 = Del_C_prev.mat * imu['dt']
+            L_prev = torch.block_diag( L_11, L_22 ).float()
+
+            # Load in previous sigma and current IMU covariance
+            Sigma_prev = self.RMI_cov_list[RMI_idx]
+            Q = torch.block_diag( imu['gyro_std']**2 * torch.eye(3), imu['vel_std']**2 * torch.eye(3) ).float()
+
+            # Propagate covariance
+            self.RMI_cov_list[RMI_idx] = F_prev @ Sigma_prev @ torch.t(F_prev) + L_prev @ Q @ torch.t(L_prev)
+
+            # Save the new RMI info up-to-idx in the list of RMIs computed since last keyframe
+            # This is used in mapping in case mapping current frame is decoupled from tracking frame
+            self.tmp_RMI.append(self.RMI_list[RMI_idx])
+            self.tmp_RMI_cov.append(self.RMI_cov_list[RMI_idx])
 
     def run(self):
         device = self.device
@@ -228,18 +280,49 @@ class Tracker(object):
                     self.visualizer.vis(
                         idx, 0, gt_depth, gt_color, c2w, self.c, self.decoders)
 
+                # Initialize RMI computation to 0
+                if self.args.imu:
+                    # Change to 0th pose should be 0
+                    self.update_RMI(0, [], reset=True)
+                    # Initialize change to 1st pose
+                    self.update_RMI(1, [], reset=True)
+                    RMI_idx = 1
+
             else:
                 gt_camera_tensor = get_tensor_from_camera(gt_c2w)
-                if self.const_speed_assumption and idx-2 >= 0:
-                    pre_c2w = pre_c2w.float()
-                    #delta = pre_c2w@self.estimate_c2w_list[idx-2].to(
-                    #    device).float().inverse()
-                    # Need to change this line for obelisk runtime, not sure why
-                    delta = pre_c2w@self.estimate_c2w_list[idx-2].float().inverse().to(
-                        device)
-                    estimated_new_cam_c2w = delta@pre_c2w
+
+                # Compute RMI stuff if applicable
+                if self.args.imu:
+                    # Update RMIs for current index
+                    self.update_RMI(RMI_idx, imu, reset=False)
+
+                    # Check if a keyframe will be added at this idx
+                    # If yes, restart RMI computation for next idx
+                    if (idx % self.keyframe_every == 0 or (idx == self.n_img-2)):
+                        RMI_idx += 1
+                        self.update_RMI(RMI_idx, [], reset=True)
+
+                if self.args.imu:
+                    delta = torch.eye(4).to(device)
+                    pre_c2w = self.estimate_c2w_list[idx-1].float().to(device)
+                    gyr_t = (imu['gyro'] * imu['dt']).float()
+                    vel_t = (imu['vel'] * imu['dt']).float()
+
+                    delta[0:3, 0:3] = SO3.exp(gyr_t).mat
+                    delta[0:3, 3] = vel_t
+
+                    estimated_new_cam_c2w = pre_c2w @ delta
                 else:
-                    estimated_new_cam_c2w = pre_c2w
+                    if self.const_speed_assumption and idx-2 >= 0:
+                        pre_c2w = pre_c2w.float()
+                        #delta = pre_c2w@self.estimate_c2w_list[idx-2].to(
+                        #    device).float().inverse()
+                        # Need to change this line for obelisk runtime, not sure why
+                        delta = pre_c2w@self.estimate_c2w_list[idx-2].float().inverse().to(
+                            device)
+                        estimated_new_cam_c2w = delta@pre_c2w
+                    else:
+                        estimated_new_cam_c2w = pre_c2w
 
                 camera_tensor = get_tensor_from_camera(
                     estimated_new_cam_c2w.detach())
@@ -295,7 +378,7 @@ class Tracker(object):
                     candidate_cam_tensor.clone().detach())
                 c2w = torch.cat([c2w, bottom], dim=0)
             self.estimate_c2w_list[idx] = c2w.clone().cpu()
-            print("Tracker saving c2w estimate ", idx.item())
+            #print("Tracker saving c2w estimate ", idx.item())
 
             self.gt_c2w_list[idx] = gt_c2w.clone().cpu()
 

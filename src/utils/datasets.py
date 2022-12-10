@@ -85,6 +85,7 @@ class BaseDataset(Dataset):
             imu_data = torch.load(imu_data_path + '/imu_data')
             return imu_data
         else:
+            print("No IMU file found")
             return []
 
     def __len__(self):

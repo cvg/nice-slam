@@ -1,5 +1,6 @@
 import yaml
 from src import conv_onet
+from os import path
 
 
 method_dict = {
@@ -7,12 +8,12 @@ method_dict = {
 }
 
 
-def load_config(path, default_path=None):
+def load_config(conf_path, default_path=None):
     """
     Loads config file.
 
     Args:
-        path (str): path to config file.
+        conf_path (str): path to config file.
         default_path (str, optional): whether to use default path. Defaults to None.
 
     Returns:
@@ -20,7 +21,9 @@ def load_config(path, default_path=None):
 
     """
     # load configuration from file itself
-    with open(path, 'r') as f:
+    if not path.exists(conf_path):
+        conf_path = path.join('/nice-slam/', conf_path)
+    with open(conf_path, 'r') as f:
         cfg_special = yaml.full_load(f)
 
     # check if we should inherit from a config
@@ -61,12 +64,7 @@ def update_recursive(dict1, dict2):
 
 # Models
 def get_model(cfg, nice=True):
-    """
-    Returns the model instance.
-
-    Args:
-        cfg (dict): config dictionary.
-        nice (bool, optional): if use NICE-SLAM. Defaults to True.
+    """paths to True.
 
     Returns:
        model (nn.module): network model.

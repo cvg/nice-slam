@@ -12,6 +12,7 @@ from src.common import (get_camera_from_tensor, get_samples,
 from src.utils.datasets import get_dataset
 from src.utils.Visualizer import Visualizer
 
+from liegroups.torch import SE3, SO3
 
 class Mapper(object):
     """
@@ -40,7 +41,12 @@ class Mapper(object):
         self.mapping_cnt = slam.mapping_cnt
         self.decoders = slam.shared_decoders
         self.estimate_c2w_list = slam.estimate_c2w_list
+        self.gt_c2w_list = slam.gt_c2w_list
         self.mapping_first_frame = slam.mapping_first_frame
+        self.RMI_list = slam.RMI_list
+        self.RMI_cov_list = slam.RMI_cov_list
+        self.tmp_RMI = slam.tmp_RMI
+        self.tmp_RMI_cov = slam.tmp_RMI_cov
 
         self.scale = cfg['scale']
         self.coarse = cfg['coarse']
@@ -264,11 +270,13 @@ class Mapper(object):
                 optimize_frame = self.keyframe_selection_overlap(
                     cur_gt_color, cur_gt_depth, cur_c2w, keyframe_dict[:-1], num)
 
-        # add the last keyframe and the current frame(use -1 to denote)
+        # Add the last keyframe and the current frame(use -1 to denote)
         oldest_frame = None
         if len(keyframe_list) > 0:
             optimize_frame = optimize_frame + [len(keyframe_list)-1]
-            oldest_frame = min(optimize_frame)
+            optimize_frame.sort()
+            #oldest_frame = min(optimize_frame)
+            oldest_frame = optimize_frame[0]
         optimize_frame += [-1]
 
         if self.save_selected_keyframes_info:
@@ -346,15 +354,64 @@ class Mapper(object):
         if self.BA:
             camera_tensor_list = []
             gt_camera_tensor_list = []
-            for frame in optimize_frame:
+            used_RMI_list = [ [] ] # Include empty RMI for 0th pose
+            used_RMI_cov_list = [ [] ]
+            for f_num, frame in enumerate(optimize_frame):
                 # the oldest frame should be fixed to avoid drifting
                 if frame != oldest_frame:
                     if frame != -1:
                         c2w = keyframe_dict[frame]['est_c2w']
                         gt_c2w = keyframe_dict[frame]['gt_c2w']
+                        
+                        # Save RMI constraint for current pose based on last one
+                        if self.args.imu:
+                            full_RMI_tmp = torch.eye(4)
+                            full_RMI_cov_tmp = torch.zeros(6, 6)
+
+                            # Loop from last to current frame
+                            for ii in range(optimize_frame[f_num-1], frame):
+                                # Remember RMI_list[ii] contains RMI from ii-1 to ii
+                                Ad_RMI = SE3.from_matrix(full_RMI_tmp, normalize=True).adjoint()
+                                full_RMI_cov_tmp = full_RMI_cov_tmp + Ad_RMI @ self.RMI_cov_list[ii+1] @ torch.t(Ad_RMI)
+                                full_RMI_tmp = full_RMI_tmp @ self.RMI_list[ii+1]
+                            
+                            # Save final change/uncertainty from last to current frame
+                            used_RMI_list.append(full_RMI_tmp)
+                            used_RMI_cov_list.append(full_RMI_cov_tmp)
                     else:
                         c2w = cur_c2w
                         gt_c2w = gt_cur_c2w
+
+                        # Save RMI constraint for current pose based on last one
+                        # Use the temporary RMI lists and query at current pose idx from last keyframe
+                        '''
+                        if self.args.imu:
+                            full_RMI_tmp = torch.eye(4)
+                            full_RMI_cov_tmp = torch.zeros(6, 6)
+    
+                            # Loop from last to current frame (recall idx is current frame index)
+                            # I know I'm repeating code here, but I'm too tired to clean this up right now lol
+                            for ii in range(optimize_frame[f_num-1], idx):
+                                # Remember RMI_list[ii] contains RMI from ii-1 to ii
+                                Ad_RMI = SE3.from_matrix(full_RMI_tmp, normalize=True).adjoint()
+
+                                # Access temp list if ii+1 is current frame
+                                if ii + 1 == idx:
+                                    # Compute index from last keyframe
+                                    tmp_ii = idx - ii - 1
+                                    RMI_ii = self.tmp_RMI[tmp_ii]
+                                    RMI_cov_ii = self.tmp_RMI_cov[tmp_ii]
+                                else:
+                                    RMI_ii = self.RMI_list[ii+1]
+                                    RMI_cov_ii = self.RMI_cov_list[ii+1]
+                                # Propagate
+                                full_RMI_cov_tmp = full_RMI_cov_tmp + Ad_RMI @ RMI_cov_ii @ torch.t(Ad_RMI)
+                                full_RMI_tmp = full_RMI_tmp @ RMI_ii
+                            
+                            # Save final change/uncertainty from last to current frame
+                            used_RMI_list.append(full_RMI_tmp)
+                            used_RMI_cov_list.append(full_RMI_cov_tmp)
+                        '''
                     camera_tensor = get_tensor_from_camera(c2w)
                     camera_tensor = Variable(
                         camera_tensor.to(device), requires_grad=True)
@@ -433,18 +490,27 @@ class Mapper(object):
             batch_gt_depth_list = []
             batch_gt_color_list = []
 
+            # Extract oldest frame pose to use in RMI error if needed
+            if self.BA and self.args.imu:
+                c2w_prev = keyframe_dict[0]['est_c2w'].detach()
+                RMI_loss = 0
+            
             camera_tensor_id = 0
-            for frame in optimize_frame:
+            for f_num, frame in enumerate(optimize_frame):
                 if frame != -1:
                     gt_depth = keyframe_dict[frame]['depth'].to(device)
                     gt_color = keyframe_dict[frame]['color'].to(device)
+
                     if self.BA and frame != oldest_frame:
+                        # Reminder, camera_tensor_list[0] is the first pose that is optimized,
+                        # so in fact pose optimize_frame[1]!
+                        # The used_RMI_list and used_RMI_cov_list adds a blank 0th element to avoid this
                         camera_tensor = camera_tensor_list[camera_tensor_id]
-                        camera_tensor_id += 1
                         c2w = get_camera_from_tensor(camera_tensor)
+
+                        camera_tensor_id += 1
                     else:
                         c2w = keyframe_dict[frame]['est_c2w']
-
                 else:
                     gt_depth = cur_gt_depth.to(device)
                     gt_color = cur_gt_color.to(device)
@@ -454,6 +520,45 @@ class Mapper(object):
                     else:
                         c2w = cur_c2w
 
+                # Add RMI loss here if applicable to avoid additional looping
+                # Don't do this for oldest frame, since we connect from current
+                # frame to the last one, so theres nothing to back-connect oldest to
+                # We do this for the most recent frame too, where used_RMI_list includes
+                # the RMI value up to current idx even if idx is not a keyframe
+                if self.args.imu and self.BA and frame != oldest_frame and frame != -1:
+                    # Extract previous pose components
+                    C_0 = c2w_prev[0:3, 0:3]
+                    r_0 = c2w_prev[0:3, 3:4]
+                    
+                    # Extract current pose components
+                    C_1 = c2w[0:3, 0:3]
+                    r_1 = c2w[0:3, 3:4]
+
+                    # Extract RMI components
+                    Del_C = used_RMI_list[f_num][0:3, 0:3].to(device)
+                    Del_r = used_RMI_list[f_num][0:3, 3:4].to(device)
+                    
+                    # Compute the SO(3) difference between measured and predicted RMI
+                    Err_C = SO3.from_matrix((Del_C @ torch.t(C_1) @ C_0).cpu(), normalize=True)
+                    err_C = Err_C.log().unsqueeze(1).to(device)
+
+                    # Compute diff between measured and predicted change in position
+                    err_r = Del_r - torch.t(C_0) @ ( r_1 - r_0 )
+
+                    # Combine errors
+                    err_RMI = torch.cat( (err_C, err_r), 0)
+
+                    #print(err_RMI)
+
+                    #if torch.norm(err_RMI) > 0.001:
+                    #    print(f_num)
+                    #    print(frame)
+
+
+                    # Compute weighted loss
+                    RMI_loss += torch.t(err_RMI) @ torch.inverse(used_RMI_cov_list[f_num]).to(device) @ err_RMI
+                    c2w_prev = c2w
+
                 batch_rays_o, batch_rays_d, batch_gt_depth, batch_gt_color = get_samples(
                     0, H, 0, W, pixs_per_image, H, W, fx, fy, cx, cy, c2w, gt_depth, gt_color, self.device)
                 batch_rays_o_list.append(batch_rays_o.float())
@@ -461,6 +566,7 @@ class Mapper(object):
                 batch_gt_depth_list.append(batch_gt_depth.float())
                 batch_gt_color_list.append(batch_gt_color.float())
 
+            #print('done here')
             batch_rays_d = torch.cat(batch_rays_d_list)
             batch_rays_o = torch.cat(batch_rays_o_list)
             batch_gt_depth = torch.cat(batch_gt_depth_list)
@@ -495,6 +601,10 @@ class Mapper(object):
                 color_loss = torch.abs(batch_gt_color - color).sum()
                 weighted_color_loss = self.w_color_loss*color_loss
                 loss += weighted_color_loss
+
+            # Add in RMI loss if applicable
+            if self.BA and self.args.imu:
+                loss += RMI_loss[0][0]
 
             # for imap*, it uses volume density
             regulation = (not self.occupancy)
@@ -559,7 +669,6 @@ class Mapper(object):
                 if self.sync_method == 'strict':
                     if idx % self.every_frame == 0 and idx != prev_idx:
                         break
-
                 elif self.sync_method == 'loose':
                     if idx == 0 or idx >= prev_idx+self.every_frame//2:
                         break
@@ -612,7 +721,7 @@ class Mapper(object):
                 if self.BA:
                     cur_c2w = _
                     self.estimate_c2w_list[idx] = cur_c2w
-                    print("Mapper saving c2w estimate ", idx.item())
+                    #print("Mapper saving c2w estimate ", idx.item())
 
                 # add new frame to keyframe set
                 if outer_joint_iter == outer_joint_iters-1:
