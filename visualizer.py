@@ -57,10 +57,22 @@ if __name__ == '__main__':
     estimate_c2w_list = estimate_c2w_list.cpu().numpy()
     gt_c2w_list = gt_c2w_list.cpu().numpy()
 
-    frontend = SLAMFrontend(output, init_pose=estimate_c2w_list[0], cam_scale=0.3,
+    # Commented out room0 settings
+    #C_init = np.eye(3)
+    #r_init = np.array([[4],[1],[6]])
+
+    #C_init = np.eye(3)
+    theta = 27.5
+    C_init = np.array([[np.cos(np.radians(theta)), -np.sin(np.radians(theta)), 0],
+                         [np.sin(np.radians(theta)), np.cos(np.radians(theta)), 0],
+                         [0, 0, 1]])
+    r_init = np.array([[-2],[0],[4]])
+    init_pose = np.eye(4)
+    init_pose[0:3,0:3] = C_init
+    init_pose[0:3,3:4] = r_init
+    frontend = SLAMFrontend(output, init_pose=init_pose, cam_scale=0.3,
                             save_rendering=args.save_rendering, near=0,
                             estimate_c2w_list=estimate_c2w_list, gt_c2w_list=gt_c2w_list).start()
-
     for i in tqdm(range(0, N+1)):
         # show every second frame for speed up
         if args.vis_input_frame and i % 2 == 0:

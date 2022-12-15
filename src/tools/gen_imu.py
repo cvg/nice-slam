@@ -6,7 +6,7 @@ import random
 import torch
 from liegroups.torch import SO3
 
-sys.path.append('/nice-slam/')
+sys.path.append('../../')
 from src import config
 from src.utils.datasets import get_dataset
 
@@ -70,12 +70,13 @@ def main():
     parser.add_argument('--gyro_noise', type=float,
                         help='angular velocity noise std value', default=0.01)
     args = parser.parse_args()
-    cfg = config.load_config(args.config, '/nice-slam/configs/nice_slam.yaml')
-    args.input_folder = '/nice-slam/' + cfg['data']['input_folder']
+    cfg = config.load_config(args.config, '/home/daniil/Documents/School/Classes/aer1515/Project/nice-slam/configs/nice_slam.yaml')
+    args.input_folder = '/home/daniil/Documents/School/Classes/aer1515/Project/nice-slam/' + cfg['data']['input_folder']
     args.output = cfg['data']['output']
 
     # Make dir for imu data
     args.imu_dir = os.path.join(args.input_folder, 'imu')
+
     os.makedirs(args.imu_dir, exist_ok=True)
 
     gen_imu(cfg, args)

@@ -11,18 +11,20 @@ tracking:
   const_speed_assumption: True
   lr: 0.001
   pixels: 200
-  iters: 10
+  iters: 5
 mapping:
-  every_frame: 5
+  every_frame: 10
   vis_freq: 3000
   vis_inside_freq: 3000
-  mesh_freq: 50
+  mesh_freq: 100
   ckpt_freq: 500
-  keyframe_every: 50
+  keyframe_every: 100
   mapping_window_size: 5
   pixels: 1000
   iters_first: 1500
-  iters: 60
+  iters: 10
+  bound: [[-2.9,8.9],[-3.2,5.5],[-3.5,3.3]]
+  marching_cubes_bound: [[-2.9,8.9],[-3.2,5.5],[-3.5,3.3]]
 cam:
   H: 680
   W: 1200
@@ -32,3 +34,6 @@ cam:
   cy: 339.5
   png_depth_scale: 6553.5 #for depth image in png format
   crop_edge: 0
+data:
+  input_folder: Datasets/Replica/room0
+  output: output/Replica/room0

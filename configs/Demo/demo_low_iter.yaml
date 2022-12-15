@@ -5,26 +5,26 @@ verbose: False
 meshing:
   resolution: 256
 tracking:
-  vis_freq: 510
+  vis_freq: 50
   vis_inside_freq: 25
   ignore_edge_W: 20
   ignore_edge_H: 20
   seperate_LR: False
   const_speed_assumption: True
-  lr: 0.0005      
+  lr: 0.0005
   pixels: 1000
-  iters: 30
+  iters: 10
 mapping:
   every_frame: 10
-  vis_freq: 510
-  vis_inside_freq: 510
+  vis_freq: 50
+  vis_inside_freq: 30
   mesh_freq: 50
   ckpt_freq: 500
-  keyframe_every: 10
+  keyframe_every: 50
   mapping_window_size: 10
   pixels: 1000
-  iters_first: 400
-  iters: 10
+  iters_first: 100
+  iters: 3
   bound: [[0.0,6.5],[0.0,4.0],[0,3.5]]
   marching_cubes_bound: [[0.0,6.5],[0.0,4.0],[0,3.5]]
 cam: 
@@ -38,4 +38,4 @@ cam:
   crop_edge: 10
 data:
   input_folder: Datasets/Demo
-  output: output/Demo
+  output: output/Demo_low_iter

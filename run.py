@@ -17,7 +17,7 @@ def setup_seed(seed):
 
 
 def main():
-    setup_seed(20)
+    setup_seed(99)
 
     parser = argparse.ArgumentParser(
         description='Arguments for running the NICE-SLAM/iMAP*.'

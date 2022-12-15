@@ -154,19 +154,19 @@ class Tracker(object):
             # Form full noise covariance on gyro measurements
             Q_gyro = (imu['gyro_std']**2 * torch.eye(3)).float()
             # Compute weight on err_C
-            W = torch.inverse(L @ Q_gyro @ torch.t(L)).double()
+            W = torch.inverse(L @ Q_gyro @ torch.t(L))
 
             # Form position error by comparing velocity measurement to predicted vel meas
             err_r = (imu['vel'] - C_0.inv().dot((r_1 - r_0).squeeze() / imu['dt']).squeeze()).squeeze()
 
             # Overall IMU loss is sum between position and orientation loss, weighted by the
             # uncertainty on each measurement
-            loss_C = (err_r.unsqueeze(0) @ W @ err_r.unsqueeze(1))[0]
+            loss_C = (err_C.unsqueeze(0) @ W @ err_C.unsqueeze(1))[0]
             loss_r = torch.dot(err_r, err_r) / imu['vel_std']**2
 
             # Add up overall imu loss (my dimension handling is garbage, hence [0])
             imu_loss = loss_C[0] + loss_r[0]
-            w_imu_loss = 0.01
+            w_imu_loss = 1
             loss += w_imu_loss * imu_loss
 
         loss.backward()

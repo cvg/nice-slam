@@ -24,7 +24,7 @@ def viewmatrix(z, up, pos):
 def completion_ratio(gt_points, rec_points, dist_th=0.05):
     gen_points_kd_tree = KDTree(rec_points)
     distances, _ = gen_points_kd_tree.query(gt_points)
-    comp_ratio = np.mean((distances < dist_th).astype(np.float))
+    comp_ratio = float(np.mean((distances < dist_th)))
     return comp_ratio
 
 

@@ -22,7 +22,7 @@ def load_config(conf_path, default_path=None):
     """
     # load configuration from file itself
     if not path.exists(conf_path):
-        conf_path = path.join('/nice-slam/', conf_path)
+        conf_path = path.join('/home/daniil/Documents/School/Classes/aer1515/Project/nice-slam/', conf_path)
     with open(conf_path, 'r') as f:
         cfg_special = yaml.full_load(f)
 

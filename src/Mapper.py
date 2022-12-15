@@ -472,6 +472,7 @@ class Mapper(object):
                 optimizer.param_groups[3]['lr'] = cfg['mapping']['stage'][self.stage]['fine_lr']*lr_factor
                 optimizer.param_groups[4]['lr'] = cfg['mapping']['stage'][self.stage]['color_lr']*lr_factor
                 if self.BA:
+                    #optimizer.param_groups[5]['lr'] = self.BA_cam_lr
                     if self.stage == 'color':
                         optimizer.param_groups[5]['lr'] = self.BA_cam_lr
             else:
@@ -494,6 +495,7 @@ class Mapper(object):
             if self.BA and self.args.imu:
                 c2w_prev = keyframe_dict[0]['est_c2w'].detach()
                 RMI_loss = 0
+                #RMI_loss_tmp = 0
             
             camera_tensor_id = 0
             for f_num, frame in enumerate(optimize_frame):
@@ -525,7 +527,7 @@ class Mapper(object):
                 # frame to the last one, so theres nothing to back-connect oldest to
                 # We do this for the most recent frame too, where used_RMI_list includes
                 # the RMI value up to current idx even if idx is not a keyframe
-                if self.args.imu and self.BA and frame != oldest_frame and frame != -1:
+                if self.args.imu and self.BA and frame != oldest_frame and frame != -1 and (optimizer.param_groups[5]['lr'] != 0):
                     # Extract previous pose components
                     C_0 = c2w_prev[0:3, 0:3]
                     r_0 = c2w_prev[0:3, 3:4]
@@ -554,9 +556,12 @@ class Mapper(object):
                     #    print(f_num)
                     #    print(frame)
 
-
                     # Compute weighted loss
-                    RMI_loss += torch.t(err_RMI) @ torch.inverse(used_RMI_cov_list[f_num]).to(device) @ err_RMI
+                    #J_l_inv = torch.eye(6)
+                    #J_l_inv[0:3,0:3] = -SO3.inv_left_jacobian(Err_C.log().detach())
+                    #RMI_loss_tmp += torch.t(err_RMI) @ torch.inverse(J_l_inv @ used_RMI_cov_list[f_num] @ torch.t(J_l_inv)).to(device) @ err_RMI
+
+                    RMI_loss += torch.t(err_RMI) @ err_RMI
                     c2w_prev = c2w
 
                 batch_rays_o, batch_rays_d, batch_gt_depth, batch_gt_color = get_samples(
@@ -603,7 +608,10 @@ class Mapper(object):
                 loss += weighted_color_loss
 
             # Add in RMI loss if applicable
-            if self.BA and self.args.imu:
+            if self.BA and self.args.imu and (RMI_loss != 0) and (optimizer.param_groups[5]['lr'] != 0):
+                w_RMI_loss = 1e-4
+                w_RMI_loss = 1
+                RMI_loss = w_RMI_loss * RMI_loss
                 loss += RMI_loss[0][0]
 
             # for imap*, it uses volume density
@@ -658,7 +666,6 @@ class Mapper(object):
         idx, gt_color, gt_depth, gt_c2w, imu = self.frame_reader[0]
 
         self.estimate_c2w_list[0] = gt_c2w.cpu()
-        print("Mapper saving c2w estimate 0")
         init = True
         prev_idx = -1
         while (1):
