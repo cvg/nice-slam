@@ -379,6 +379,17 @@ python src/tools/cull_mesh.py --input_mesh Datasets/Replica/room0_mesh.ply --tra
   As discussed in many recent papers, e.g. UNISURF/VolSDF/NeuS, manual thresholding the volume density during marching cubes might be needed. Moreover, we find out there exist scaling differences, possibly because of the reason discussed in [NeuS](https://arxiv.org/abs/2106.10689). Therefore, ICP with scale is needed. You can use the [ICP tool](https://www.cloudcompare.org/doc/wiki/index.php?title=ICP) in [CloudCompare](https://www.danielgm.net/cc/) with default configuration with scaling enabled. 
 </details>
 
+## Generate IMU Data
+Navigate to the `nice-slam/src/tools` file and run
+```bash
+python gen_imu.py ABS_PATH_TO_CONFIG
+```
+where `ABS_PATH_TO_CONFIG` is the absolute path to the configuration file of the run you want to generate IMU data for. For example, 
+```bash
+python gen_imu.py /home/dli/nice_slam/nice-slam/configs/Replica/room0.yaml
+```
+will generate IMU data for the Room 0 scene in Replica. The data will be stored in the dataset folder of that scene in a new folder called `imu`.
+
 ## Acknowledgement
 We adapted some codes from some awesome repositories including [convolutional_occupancy_networks](https://github.com/autonomousvision/convolutional_occupancy_networks), [nerf-pytorch](https://github.com/yenchenlin/nerf-pytorch), [lietorch](https://github.com/princeton-vl/lietorch), and [DIST-Renderer](https://github.com/B1ueber2y/DIST-Renderer). Thanks for making codes public available. We also thank [Edgar Sucar](https://edgarsucar.github.io/) for allowing us to make the Replica Dataset available.
 

@@ -70,8 +70,8 @@ def main():
     parser.add_argument('--gyro_noise', type=float,
                         help='angular velocity noise std value', default=0.01)
     args = parser.parse_args()
-    cfg = config.load_config(args.config, '/home/daniil/Documents/School/Classes/aer1515/Project/nice-slam/configs/nice_slam.yaml')
-    args.input_folder = '/home/daniil/Documents/School/Classes/aer1515/Project/nice-slam/' + cfg['data']['input_folder']
+    cfg = config.load_config(args.config, '../../configs/nice_slam.yaml')
+    args.input_folder = '../../' + cfg['data']['input_folder']
     args.output = cfg['data']['output']
 
     # Make dir for imu data
